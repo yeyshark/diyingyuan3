@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=3.0, user-scalable=yes">
+    <title>幼儿园签到</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+            touch-action: manipulation;
+            overflow-x: auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header img {
+            width: 100px;
+            height: 100px;
+        }
+        .form-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .success-container {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .success-image {
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+        }
+        .admin-section {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+        }
+        
+        /* 选座系统样式 */
+        .seat-selection {
+            display: none;
+            margin-top: 30px;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .screen {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .seats-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform-origin: top center;
+            transition: transform 0.2s;
+        }
+        .seat-row {
+            display: flex;
+            margin-bottom: 5px;
+        }
+        .seat {
+            width: 20px;
+            height: 20px;
+            margin: 0 3px;
+            background-color: #ddd;
+            border-radius: 2px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            font-size: 10px;
+        }
+        .seat:hover {
+            background-color: #ccc;
+        }
+        .seat.selected {
+            background-color: #f44336;
+            color: white;
+        }
+        .seat.occupied {
+            background-color: #f44336;
+            color: white;
+            cursor: not-allowed;
+        }
+        .aisle {
+            width: 20px;
+            margin: 0 5px;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 10px;
+            font-size: 12px;
+        }
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            border-radius: 2px;
+        }
+        .legend-available {
+            background-color: #ddd;
+        }
+        .legend-selected {
+            background-color: #f44336;
+        }
+        
+        /* 缩放控制按钮 */
+        .zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 5px;
+            font-size: 20px;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        @media (max-width: 600px) {
+            .seat {
+                width: 15px;
+                height: 15px;
+                font-size: 8px;
+                margin: 0 2px;
+            }
+            .aisle {
+                width: 15px;
+                margin: 0 3px;
+            }
+            .screen {
+                font-size: 14px;
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="logo.png" alt="幼儿园logo">
+        <h1>幼儿园签到</h1>
+    </div>
+    
+    <div class="form-container">
+        <form id="signForm">
+            <div class="form-group">
+                <label for="childName">1. 姓名</label>
+                <input type="text" id="childName" required placeholder="请输入姓名">
+            </div>
+            <div class="form-group">
+                <label for="className">2. 手机号码</label>
+                <input type="text" id="className" required placeholder="请输入手机号码">
+            </div>
+            <button type="submit">提交信息</button>
+        </form>
+        
+        <div class="seat-selection" id="seatSelection">
+            <div class="screen">银幕</div>
+            <div class="seats-container" id="seatsContainer"></div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color legend-available"></div>
+                    <span>可选座位</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color legend-selected"></div>
+                    <span>已选座位</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="success-container" id="successContainer">
+            <h2>选座成功！</h2>
+            <img class="success-image" src="success.png" alt="选座成功">
+            <p class="seat-info" id="seatInfo"></p>
+            <p>感谢您的参与</p>
+        </div>
+    </div>
+    
+    <!-- 管理员区域 - 可以添加密码保护 -->
+    <div class="admin-section" id="adminSection">
+        <h2>数据管理</h2>
+        <button onclick="exportData()">导出选座数据(Excel)</button>
+        <button onclick="clearData()" style="background-color: #f44336; margin-top: 10px;">清空所有数据</button>
+        <div id="dataPreview" style="margin-top: 20px;"></div>
+    </div>
+
+    <!-- 缩放控制按钮 -->
+    <div class="zoom-controls">
+        <div class="zoom-btn" id="zoomIn">+</div>
+        <div class="zoom-btn" id="zoomOut">-</div>
+    </div>
+
+    <script>
+        // 显示/隐藏管理员区域
+        document.getElementById('adminSection').style.display = 'none';
+        
+        // 显示管理员区域的简单密码验证
+        const password = prompt("请输入管理员密码");
+        if (password === "123") {
+            document.getElementById('adminSection').style.display = 'block';
+            loadDataPreview();
+        }
+
+        // 初始化座位数据
+        let seatData = JSON.parse(localStorage.getItem('seatData') || '[]');
+        let selectedSeat = localStorage.getItem('selectedSeat') || null;
+        
+        // 检查是否已经选座
+        if (selectedSeat) {
+            showSuccessPage(selectedSeat);
+        }
+        
+        // 缩放相关变量
+        let currentScale = 1;
+        const minScale = 0.5;
+        const maxScale = 3;
+        const scaleStep = 0.2;
+        const seatsContainer = document.getElementById('seatsContainer');
+        
+        // 初始化缩放控制
+        document.getElementById('zoomIn').addEventListener('click', () => {
+            zoom(scaleStep);
+        });
+        
+        document.getElementById('zoomOut').addEventListener('click', () => {
+            zoom(-scaleStep);
+        });
+        
+        // 触摸事件处理
+        let initialDistance = null;
+        
+        seatsContainer.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                initialDistance = getDistance(e.touches[0], e.touches[1]);
+            }
+        });
+        
+        seatsContainer.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const currentDistance = getDistance(e.touches[0], e.touches[1]);
+                if (initialDistance !== null) {
+                    const scale = currentDistance / initialDistance;
+                    zoom((scale - 1) * 0.5);
+                }
+                initialDistance = currentDistance;
+            }
+        });
+        
+        seatsContainer.addEventListener('touchend', function() {
+            initialDistance = null;
+        });
+        
+        function getDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        function zoom(amount) {
+            currentScale = Math.min(maxScale, Math.max(minScale, currentScale + amount));
+            seatsContainer.style.transform = `scale(${currentScale})`;
+        }
+        
+        // 创建座位图
+        function createSeatMap() {
+            const container = document.getElementById('seatsContainer');
+            container.innerHTML = '';
+            
+            const rows = 8; // 8排
+            const seatsPerRow = 22; // 每排22个座位
+            
+            for (let row = 0; row < rows; row++) {
+                const rowLetter = String.fromCharCode(65 + row); // A-H
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'seat-row';
+                
+                // 左侧5个座位
+                for (let seat = 1; seat <= 5; seat++) {
+                    const seatId = `${rowLetter}-${seat}`;
+                    const seatDiv = document.createElement('div');
+                    seatDiv.className = 'seat';
+                    seatDiv.textContent = seat;
+                    seatDiv.dataset.seat = seatId;
+                    
+                    // 检查是否已被占用
+                    if (seatData.some(item => item.seat === seatId)) {
+                        seatDiv.classList.add('occupied');
+                    }
+                    
+                    seatDiv.addEventListener('click', () => selectSeat(seatId));
+                    rowDiv.appendChild(seatDiv);
+                }
+                
+                // 左侧通道
+                const leftAisle = document.createElement('div');
+                leftAisle.className = 'aisle';
+                rowDiv.appendChild(leftAisle);
+                
+                // 中间12个座位
+                for (let seat = 6; seat <= 17; seat++) {
+                    const seatId = `${rowLetter}-${seat}`;
+                    const seatDiv = document.createElement('div');
+                    seatDiv.className = 'seat';
+                    seatDiv.textContent = seat;
+                    seatDiv.dataset.seat = seatId;
+                    
+                    // 检查是否已被占用
+                    if (seatData.some(item => item.seat === seatId)) {
+                        seatDiv.classList.add('occupied');
+                    }
+                    
+                    // 第一排中间12个座位标红
+                    if (row === 0) {
+                        seatDiv.classList.add('occupied');
+                    }
+                    
+                    seatDiv.addEventListener('click', () => selectSeat(seatId));
+                    rowDiv.appendChild(seatDiv);
+                }
+                
+                // 右侧通道
+                const rightAisle = document.createElement('div');
+                rightAisle.className = 'aisle';
+                rowDiv.appendChild(rightAisle);
+                
+                // 右侧5个座位
+                for (let seat = 18; seat <= 22; seat++) {
+                    const seatId = `${rowLetter}-${seat}`;
+                    const seatDiv = document.createElement('div');
+                    seatDiv.className = 'seat';
+                    seatDiv.textContent = seat;
+                    seatDiv.dataset.seat = seatId;
+                    
+                    // 检查是否已被占用
+                    if (seatData.some(item => item.seat === seatId)) {
+                        seatDiv.classList.add('occupied');
+                    }
+                    
+                    seatDiv.addEventListener('click', () => selectSeat(seatId));
+                    rowDiv.appendChild(seatDiv);
+                }
+                
+                container.appendChild(rowDiv);
+            }
+            
+            // 重置缩放
+            currentScale = 1;
+            seatsContainer.style.transform = 'scale(1)';
+        }
+        
+        // 选择座位
+        function selectSeat(seatId) {
+            const seatDiv = document.querySelector(`.seat[data-seat="${seatId}"]`);
+            
+            // 如果座位已被占用，不能选择
+            if (seatDiv.classList.contains('occupied')) {
+                return;
+            }
+            
+            // 取消之前的选择
+            document.querySelectorAll('.seat.selected').forEach(seat => {
+                seat.classList.remove('selected');
+            });
+            
+            // 选择新座位
+            seatDiv.classList.add('selected');
+            
+            // 显示确认按钮
+            const confirmBtn = document.getElementById('confirmSeat');
+            if (!confirmBtn) {
+                const btn = document.createElement('button');
+                btn.id = 'confirmSeat';
+                btn.textContent = '确认选座';
+                btn.style.marginTop = '20px';
+                btn.onclick = () => confirmSelection(seatId);
+                document.getElementById('seatSelection').appendChild(btn);
+            }
+        }
+        
+        // 确认选座
+        function confirmSelection(seatId) {
+            const childName = document.getElementById('childName').value;
+            const className = document.getElementById('className').value;
+            
+            // 存储选座数据
+            seatData.push({
+                name: childName,
+                phone: className,
+                seat: seatId,
+                time: new Date().toLocaleString('zh-CN')
+            });
+            localStorage.setItem('seatData', JSON.stringify(seatData));
+            
+            // 记录已选座位
+            localStorage.setItem('selectedSeat', seatId);
+            
+            // 显示成功页面
+            showSuccessPage(seatId);
+        }
+        
+        // 显示成功页面
+        function showSuccessPage(seatId) {
+            document.getElementById('signForm').style.display = 'none';
+            document.getElementById('seatSelection').style.display = 'none';
+            document.getElementById('successContainer').style.display = 'block';
+            
+            // 显示座位信息
+            const [row, seat] = seatId.split('-');
+            document.getElementById('seatInfo').textContent = `${row}排${seat}座`;
+        }
+        
+        // 提交表单
+        document.getElementById('signForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 获取表单数据
+            const childName = document.getElementById('childName').value;
+            const className = document.getElementById('className').value;
+            
+            // 验证表单
+            if (!childName || !className) {
+                alert('请填写完整信息');
+                return;
+            }
+            
+            // 隐藏表单，显示选座界面
+            document.getElementById('signForm').style.display = 'none';
+            document.getElementById('seatSelection').style.display = 'block';
+            
+            // 创建座位图
+            createSeatMap();
+        });
+        
+        // 导出Excel数据
+        function exportData() {
+            if (seatData.length === 0) {
+                alert('没有选座数据');
+                return;
+            }
+            
+            // 创建CSV内容
+            let csv = '\uFEFF'; // UTF-8 BOM
+            csv += '姓名,手机号码,座位,选座时间\n';
+            
+            seatData.forEach(item => {
+                csv += `"${item.name}","${item.phone}","${item.seat}","${item.time}"\n`;
+            });
+            
+            // 创建下载链接
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `选座数据_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // 清空数据
+        function clearData() {
+            if (confirm('确定要清空所有选座数据吗？此操作不可撤销！')) {
+                localStorage.removeItem('seatData');
+                localStorage.removeItem('selectedSeat');
+                seatData = [];
+                selectedSeat = null;
+                loadDataPreview();
+                alert('数据已清空');
+                
+                // 重新显示表单
+                document.getElementById('signForm').style.display = 'block';
+                document.getElementById('seatSelection').style.display = 'none';
+                document.getElementById('successContainer').style.display = 'none';
+                document.getElementById('signForm').reset();
+            }
+        }
+        
+        // 加载数据预览
+        function loadDataPreview() {
+            const preview = document.getElementById('dataPreview');
+            
+            if (seatData.length === 0) {
+                preview.innerHTML = '<p>暂无选座数据</p>';
+                return;
+            }
+            
+            let html = '<h3>最近5条选座记录:</h3><ul>';
+            const recentData = seatData.slice(-5).reverse();
+            recentData.forEach(item => {
+                html += `<li>${item.name} (${item.phone}) - ${item.seat} - ${item.time}</li>`;
+            });
+            html += `</ul><p>总记录数: ${seatData.length} 条</p>`;
+            
+            preview.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
